@@ -1,0 +1,334 @@
+﻿<html><head>
+    <title>Boreal</title>
+ 
+<script id="shader-vs" type="x-shader/x-vertex"> 
+  attribute vec2 vPos;
+//  attribute vec2 a_Tex;
+//   varying vec2 v_texCoord;
+
+  void main(void) {
+//    v_texCoord = a_Tex;
+  gl_Position = vec4(vPos, 0., 1.);
+}
+</script> 
+
+<script type="text/javascript">
+    var ctxGL = null;
+    var progM = null;
+    var canvasM = null;
+    var startTime;
+    var mousePos = { x: 0.0, y: 0.0 };
+    //var mouseLPos = { x: 2.75, y: 2.3 };
+    var mouseLPos = { x: 0.0, y: 0.0 };
+
+    var mouseRPos = { x: 0.0, y: 0.0 };
+    var startMousePos = { x: 0.0, y: 0.0 };
+
+    var isLMouseDown = false;
+    var isRMouseDown = false;
+
+</script>
+
+<script type="text/javascript" src="WebGLhelper.js"></script>
+
+
+<script type="text/javascript">
+
+
+    var textures = [];
+    var skyTex, landTex;
+    var ulResolution, ulTime, ulSkyTex, ulLandTex;
+
+    var isStop = false;
+
+function render()
+{
+    if(isStop) return;
+    ctxGL.uniform2f(ulResolution, canvasM.width, canvasM.height);
+    ctxGL.uniform1f(ulTime, (new Date() - startTime) / 1000.0);
+/*
+    ctxGL.enable(ctxGL.TEXTURE_2D);
+
+    ctxGL.activeTexture(ctxGL.TEXTURE0);
+    ctxGL.bindTexture(ctxGL.TEXTURE_2D, skyTex);
+
+
+    ctxGL.activeTexture(ctxGL.TEXTURE1);
+    ctxGL.bindTexture(ctxGL.TEXTURE_2D, landTex);
+    ctxGL.uniform1i(ulLandTex, 1);
+*/
+
+    ctxGL.drawArrays(ctxGL.TRIANGLE_FAN, 0, 4);
+
+}
+
+function initGL()
+{
+    //Creo canvas su intera window
+    var effect = document.createElement('div');
+    document.body.appendChild(effect);
+
+    canvasM = document.createElement('canvas');
+    effect.appendChild(canvasM);
+
+    try {
+        ctxGL = canvasM.getContext("webgl") || canvasM.getContext("experimental-webgl");
+    } catch (e) { }
+    if (!ctxGL) { alert("Can't get WebGL"); return; }
+
+
+}
+
+function initRender() 
+{
+    progM = ctxGL.createProgram();
+
+    ctxGL.attachShader(progM, getShader(ctxGL, "shader-vs"));
+
+    shader = ctxGL.createShader(ctxGL.FRAGMENT_SHADER);
+    ctxGL.shaderSource(shader, this.responseText);
+
+    ctxGL.compileShader(shader);
+    if (ctxGL.getShaderParameter(shader, ctxGL.COMPILE_STATUS) == 0) {
+        console.error(ctxGL.getShaderInfoLog(shader));
+        return;
+    }
+
+    ctxGL.attachShader(progM, shader);
+
+    //ctxGL.attachShader(progM, getShaderFromFile(ctxGL, "Boreal.glsl", ctxGL.FRAGMENT_SHADER));
+
+    if (ctxGL.linkProgram(progM) == 0) {
+
+        // An error occurred while linking
+        var lastError = ctxGL.getProgramInfoLog(progM);
+        console.warn("Error in program linking:" + lastError);
+
+        ctxGL.deleteProgram(progM);
+        return null;
+    }
+
+
+    ctxGL.useProgram(progM);
+
+    var posAtrLocM = ctxGL.getAttribLocation(progM, "vPos");
+    ctxGL.enableVertexAttribArray(posAtrLocM);
+
+    ctxGL.bindBuffer(ctxGL.ARRAY_BUFFER, ctxGL.createBuffer());
+    ctxGL.bufferData(ctxGL.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]), ctxGL.STATIC_DRAW);
+    ctxGL.vertexAttribPointer(posAtrLocM, 2, ctxGL.FLOAT, false, 0, 0);
+/*
+    var texAtrLoc = ctxGL.getAttribLocation(progM, "a_Tex");
+    ctxGL.enableVertexAttribArray(texAtrLoc);
+
+    ctxGL.bindBuffer(ctxGL.ARRAY_BUFFER, ctxGL.createBuffer());
+    ctxGL.bufferData(ctxGL.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), ctxGL.STATIC_DRAW);
+    ctxGL.vertexAttribPointer(texAtrLoc, 2, ctxGL.FLOAT, false, 0, 0);
+*/
+    ulResolution = ctxGL.getUniformLocation(progM, "resolution");
+    ulTime = ctxGL.getUniformLocation(progM, "time");;
+
+    ctxGL.uniform2f(ctxGL.getUniformLocation(progM, "mouseL"), mouseLPos.x, mouseLPos.y);
+    ctxGL.uniform2f(ctxGL.getUniformLocation(progM, "mouseR"), mouseRPos.x, mouseRPos.y);
+
+    setInterval(render, 1000 / 30);
+
+
+/*
+
+    skyTex = loadTexture(ctxGL, "Sky4.png");
+    landTex = loadTexture(ctxGL, "Land4.png");
+
+    ulSkyTex = ctxGL.getUniformLocation(progM, "skyTex");
+    ulLandTex = ctxGL.getUniformLocation(progM, "landTex");
+
+    ctxGL.enable(ctxGL.TEXTURE_2D);
+
+    ctxGL.activeTexture(ctxGL.TEXTURE0 + skyTex);
+    ctxGL.bindTexture(ctxGL.TEXTURE_2D, skyTex);
+    ctxGL.uniform1i(ulSkyTex, skyTex);
+
+    ctxGL.activeTexture(ctxGL.TEXTURE0 + landTex);
+    ctxGL.bindTexture(ctxGL.TEXTURE_2D, landTex);
+    ctxGL.uniform1i(ulLandTex, landTex);
+*/
+
+
+    /*
+    Load Multi Textures
+    
+        loadImages([
+        "Sky3_1.png",
+        "Land3_1.png",
+        ], buildTextures);
+    
+        function buildTextures(images)
+        {
+            var gl = ctxGL;
+            for (var ii = 0; ii < 2; ++ii) {
+                var texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+    
+                // Set the parameters so we can render any size image.
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    
+                // Upload the image into the texture.
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images[ii]);
+    
+                // add the texture to the array of textures.
+                textures.push(texture);
+            }
+    
+        }
+    */
+
+    //ctxGL.uniform1i( ctxGL.getUniformLocation(progM,"iterations"), 100 );
+    //ctxGL.uniform2f(ctxGL.getUniformLocation(progM, "mouse"), mousePos.x, mousePos.y);
+    //gM.uniform2f( gM.getUniformLocation(progM,"mandelPos"), .25, .01 );
+
+}
+
+function onResize() 
+{
+    canvasM.width = window.innerWidth;
+    canvasM.height = window.innerHeight;
+    canvasM.style.width = window.innerWidth + 'px';
+    canvasM.style.height = window.innerHeight + 'px';
+
+
+    ctxGL.viewport(0, 0, canvasM.width, canvasM.height);
+
+    if (progM) render();
+
+}
+
+
+
+function getMousePos(canvas, evt) {
+    return {
+        x: evt.clientX / window.innerWidth,
+        y: 1 - evt.clientY / window.innerHeight
+    };
+}
+
+
+function webGLStart() {
+
+    startTime = new Date();
+    
+
+
+    //demoInit();
+    //controls[controls.length] = new Slider(obj[(3*i)+2].getElementsByTagName('div')[1],obj[(3*i)+1],obj[(3*i)+2].getElementsByTagName('div')[0]);
+        
+
+    //controller = new Controller();
+
+    //popupTools.addEventListener("mousedown", onMouseDown, false);
+
+
+    initGL();
+
+    getShaderFromFileAsync("Boreal.glsl",initRender);
+
+
+    //initRender();
+
+
+    window.addEventListener("resize", onWindowsResize, false);
+    canvasM.addEventListener("mousemove", onMouseMove, false);
+
+    //canvasM.addEventListener("mousedown", function (evt) {   }, false);
+    //canvasM.addEventListener("mouseup", function (evt) {  }, false);
+    canvasM.addEventListener("mousedown", onMouseDown, false);
+    canvasM.addEventListener("mouseup", onMouseUp, false);
+
+    canvasM.addEventListener("mouseover", function (evt) { }, false);
+
+
+
+    function onMouseDown(evt) {
+        switch (evt.which) {
+            case 1:
+                startMousePos = getMousePos(ctxGL, evt);
+                isLMouseDown = true;
+                //isStop = true;
+                break;
+            case 2:
+                break;
+            case 3:
+                startMousePos = getMousePos(ctxGL, evt);
+                isRMouseDown = true;
+                break;
+            default:
+        }
+    }
+
+    function onMouseUp(evt) {
+        switch (evt.which) {
+            case 1:
+                mouseLPos.x += mousePos.x - startMousePos.x;
+                mouseLPos.y += mousePos.y - startMousePos.y;
+                isLMouseDown = false;
+                isStop = false;
+                break;
+            case 2:
+                break;
+            case 3:
+                mouseRPos.x += mousePos.x - startMousePos.x;
+                mouseRPos.y += mousePos.y - startMousePos.y;
+                isRMouseDown = false;
+                break;
+            default:
+        }
+    }
+
+
+
+    function onWindowsResize(evt) { onResize(); }
+    function onMouseMove(evt) {
+        if (isLMouseDown) {
+            mousePos = getMousePos(ctxGL, evt);
+            ctxGL.uniform2f(ctxGL.getUniformLocation(progM, "mouseL"), mouseLPos.x + mousePos.x - startMousePos.x, mouseLPos.y + mousePos.y - startMousePos.y);
+        } else if (isRMouseDown) {
+            mousePos = getMousePos(ctxGL, evt);
+            ctxGL.uniform2f(ctxGL.getUniformLocation(progM, "mouseR"), mouseRPos.x + mousePos.x - startMousePos.x, mouseRPos.y + mousePos.y - startMousePos.y);
+
+        }
+
+        if (progM) render();
+    }
+
+    onResize();
+
+
+    //showTools();
+
+
+}
+</script>
+    <style>
+
+        body {
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+            font-family: Arial,Helvetica,Sans-serif;
+            font-size: 12px;
+
+        }
+
+
+    </style>
+
+</head>
+
+<body onload="webGLStart();" oncontextmenu="return false;" style="color: #CCCCCC; background-color: #000000">
+
+
+
+</body>
+</html>
